@@ -3,7 +3,7 @@ from tkinter import *
 
 class scrollingFrame(Frame):
     def __init__(self, parentObject, background):
-        Frame.__init__(self, parentObject, background = background)
+        Frame.__init__(self, parentObject, background = background,height = 100)
         self.canvas = Canvas(self, borderwidth=0, background = background, highlightthickness=0)
         self.frame = Frame(self.canvas, background = background)
 

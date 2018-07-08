@@ -2,9 +2,9 @@ import sqlite3
 
 class Database:
 
-	def __init__(self):
+	def __init__(self,database):
 
-		self.connection = sqlite3.connect("database/database.db")
+		self.connection = sqlite3.connect(database)
 
 		self.c = self.connection.cursor()
 
