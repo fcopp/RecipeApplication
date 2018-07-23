@@ -14,8 +14,7 @@ class Controller():
 		self.database.close()
 
 	def addRecipe(self, recipe):
-		self.database.addRecipe(recipe)
-		return
+		return self.database.addRecipe(recipe)
 
 	def deleteRecipe(self, keyword):
 		return self.database.deleteRecipe(keyword)

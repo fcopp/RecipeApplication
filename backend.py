@@ -57,9 +57,15 @@ class Database:
 
 
     def addRecipe(self,recipe):
-        self.c.execute("INSERT OR IGNORE INTO recipes (name) VALUES (?)",(recipe.name,))
+        #self.c.execute("INSERT OR IGNORE INTO recipes (name) VALUES (?)",(recipe.name,))
+
         hold = self.c.execute("SELECT recipeID FROM recipes WHERE recipes.name = ?",(recipe.name,)).fetchone()
-        recipeID = hold[0]
+
+        if hold is  not None:
+            return None
+
+        self.c.execute("INSERT OR IGNORE INTO recipes (name) VALUES (?)",(recipe.name,))
+        recipeID = hold = self.c.execute("SELECT recipeID FROM recipes WHERE recipes.name = ?",(recipe.name,)).fetchone()[0]
 
         ingredientIDList = []
         if type(recipe.ingredients) is not str:
@@ -89,6 +95,8 @@ class Database:
         for index, ingredientID in enumerate(ingredientIDList):
             self.c.execute("INSERT OR IGNORE INTO recipeingredients (recipeID,ingredientID,quantity) VALUES (?,?,?)",(recipeID,ingredientID,recipe.quantities[index]))
 
+        return recipe
+
     def deleteRecipe(self,recipe_name):
         #returns None if not found
         check = self.c.execute("SELECT * FROM recipes WHERE recipes.name = ?",(recipe_name,)).fetchone()
@@ -96,11 +104,13 @@ class Database:
         return check
 
     def getRecipe(self,recipe_name): #return either list or single answer, if list then print options 
-        recipeID = self.c.execute("SELECT recipes.recipeID FROM recipes WHERE recipes.name = ?",(recipe_name,)).fetchall()
-        length = len(recipeID)
-        if length == 1:
-            ingredientsQuantities = self.c.execute("SELECT ingredients.name, recipeingredients.quantity FROM ingredients INNER JOIN recipeingredients ON ingredients.ingredientID = recipeingredients.ingredientID AND recipeingredients.recipeID = recipeID").fetchall()
-            instructions = self.c.execute("SELECT instructions.instruction, instructions.num FROM instructions INNER JOIN recipeinstructions ON recipeinstructions.instructionID = instructions.instructionID AND recipeinstructions.recipeID = recipeID").fetchall()
+        recipeID = self.c.execute("SELECT recipes.recipeID FROM recipes WHERE recipes.name = ?",(recipe_name,)).fetchone()
+        print(recipeID)
+        if recipeID == None:
+            return None
+        elif len(recipeID) == 1:
+            ingredientsQuantities = self.c.execute("SELECT ingredients.name, recipeingredients.quantity FROM ingredients INNER JOIN recipeingredients ON ingredients.ingredientID = recipeingredients.ingredientID AND recipeingredients.recipeID = ?",(recipeID[0],)).fetchall()
+            instructions = self.c.execute("SELECT instructions.instruction, instructions.num FROM instructions INNER JOIN recipeinstructions ON recipeinstructions.instructionID = instructions.instructionID AND recipeinstructions.recipeID = ?",(recipeID[0],)).fetchall()
             ingredients, quantities = zip(*ingredientsQuantities)
             recipe = Recipe.Recipe(recipe_name, instructions, ingredients, quantities)
             return [recipe]
@@ -113,15 +123,22 @@ class Database:
         for name in names:
             if keyword in name:
                 includes_keyword.append(name)
+        print(includes_keyword)
+        if len(includes_keyword) == 0:
+            return None    
         return includes_keyword
 
     def keyWordSearchIngredients(self, keyword):
         test = self.c.execute("SELECT ingredients.name FROM ingredients").fetchall()
         ingredient_names = []
         [ingredient_names.append(name[0]) for name in test if keyword in name[0] ]
-        print(ingredient_names)
         
-        return None
+        recipe_names = set([])
+        for ingredient_name in ingredient_names:
+            ingredientID = self.c.execute("SELECT ingredients.ingredientID FROM ingredients WHERE ingredients.name = ?",(ingredient_name,)).fetchone()
+            recipe_name_list = self.c.execute("SELECT recipes.name FROM recipes INNER JOIN recipeingredients ON recipeingredients.ingredientID = ? AND recipes.recipeID = recipeingredients.recipeID",(ingredientID[0],)).fetchall()
+            [recipe_names.add(name[0]) for name in recipe_name_list]
+        return list(recipe_names)
 
     def getRecipeList(self):
         return [name[0] for name in self.c.execute("SELECT recipes.name FROM recipes").fetchall()]

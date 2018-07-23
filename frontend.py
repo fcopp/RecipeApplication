@@ -136,7 +136,7 @@ class recipeFrame(tk.Frame):
         #add add_recipe button to bottom frame
         self.add_recipe_button = tk.Button(self.add_recipe_frame, text = 'Add Recipe')
         self.add_recipe_button.pack(side = "right",padx = 50, pady = 5)
-        self.add_recipe_button.bind('<Button-1>',self.recipeEvent)
+        self.add_recipe_button.bind('<ButtonRelease>',self.recipeEvent)
 
         self.instructions = []
         self.ingredients = []
@@ -153,7 +153,9 @@ class recipeFrame(tk.Frame):
 
     def recipeEvent(self,event):
         recipe = Recipe.Recipe(self.recipe_name_entry.get(),self.instructions,self.ingredients,self.quantities)
-        self.GUI.parent.addRecipe(recipe)
+        if self.GUI.parent.addRecipe(recipe) != recipe:
+            messagebox.showerror("Error","Recipe name already exists.")
+            return
         self.clearFrame()
         return
 
@@ -222,7 +224,8 @@ class lookupFrame(tk.Frame):
         ingredient_keyword = self.ingredient_entry.get()
         self.ingredient_entry.delete("0",tk.END)
         self.recipe_entry.delete("0",tk.END)
-
+        if ingredient_keyword == "":
+            return
         self.printResults(self.GUI.parent.ingredientKeywordSearch(ingredient_keyword))
         return
 
@@ -231,13 +234,15 @@ class lookupFrame(tk.Frame):
         recipe_keyword = self.recipe_entry.get()
         self.recipe_entry.delete("0",tk.END)
         self.ingredient_entry.delete("0",tk.END)
-
+        if recipe_keyword == "":
+            return
         self.printResults(self.GUI.parent.recipeKeywordSearch(recipe_keyword))
         return
 
     def printResults(self, results):
         #either list or single recipe or none
-        if results is None:
+        print(results)
+        if results is None or len(results) == 0:
             messagebox.showerror("Error","No results found.")
         else:
             if isinstance(results[0],Recipe.Recipe) and len(results) == 1:
@@ -247,7 +252,7 @@ class lookupFrame(tk.Frame):
                 
                 self.scroll_frame.addText("{:<15}".format("\nRequired Ingredients:"))
                 for index, ingredient in enumerate(results[0].ingredients):
-                    self.scroll_frame.addText("{:.<25}{:<10}".format(ingredient,str(results[0].quantities[index])))
+                    self.scroll_frame.addText("{:<25}{:<10}".format(ingredient,str(results[0].quantities[index])))
 
                 self.scroll_frame.addText("{:<15}".format("\nInstructions:"))
                 for index, instruction in enumerate(results[0].instructions):
@@ -259,6 +264,11 @@ class lookupFrame(tk.Frame):
                 for result in results:
                     self.scroll_frame.addText("{}".format(result))
         return
+
+    def clearFrame(self):
+        self.recipe_entry.delete("0",tk.END)
+        self.ingredient_entry.delete("0",tk.END)
+        self.scroll_frame.deleteAllText()
 
 class deleteFrame(tk.Frame):
     def __init__(self, GUI, parent):
@@ -305,6 +315,10 @@ class deleteFrame(tk.Frame):
         messagebox.showinfo("Result", message)
         return
 
+    def clearFrame(self):
+        self.recipe_name_entry.delete("0",tk.END)
+        return
+
 class groceriesFrame(tk.Frame):
     def __init__(self, GUI, parent):
         tk.Frame.__init__(self, parent,borderwidth = 10)
@@ -312,6 +326,9 @@ class groceriesFrame(tk.Frame):
         self.GUI = GUI
         self.label = tk.Label(self, text = "groceriesFrame")
         self.label.pack()
+    
+    def clearFrame(self):
+        return
 
 class GUI(tk.Tk):
     def __init__(self,parent):
@@ -350,8 +367,7 @@ class GUI(tk.Tk):
         frame = self.frames[frame_name]
         frame.tkraise()
 
-        if frame_name == "recipeFrame":
-            self.frames[frame_name].clearFrame()
+        self.frames[frame_name].clearFrame()
 
 
     # def on_closing(self):
