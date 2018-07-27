@@ -1,15 +1,16 @@
 import json
 
-import frontend as GUI
-import backend as Database
-import recipe as Recipe
+from recipe_scrapers import scrape_me
+from frontend import GUI
+from backend import Database
+from recipe import Recipe
 
 class Controller():
     def __init__(self,database):
-        self.database = Database.Database(database)
+        self.database = Database(database)
         # recipe = Recipe.Recipe("fuck", ["suck me"], ["dicks", "cocks", "cocknug"], [1,2,3])
         # self.database.addRecipe(recipe)
-        self.GUI = GUI.GUI(self)
+        self.GUI = GUI(self)
         
     def writeRecipeFile(self, file):
 
@@ -36,7 +37,7 @@ class Controller():
         try:
             text = json.load(file)
             for recipe in text:
-                recipe = Recipe.Recipe(recipe["name"],recipe["instructions"], recipe["ingredients"], recipe["quantities"])
+                recipe = Recipe(recipe["name"],recipe["instructions"], recipe["ingredients"], recipe["quantities"])
                 recipe.print()
                 self.database.addRecipe(recipe)
         except (ValueError) as e:
@@ -49,7 +50,7 @@ class Controller():
         self.database.close()
 
     def switchDatabase(self, fileName):
-        self.database = Database.Database(fileName)
+        self.database = Database(fileName)
         return
 
     def addRecipe(self, recipe):
@@ -73,5 +74,5 @@ class Controller():
 
 
 if __name__ == '__main__':
-    controller = Controller("database/database.db")
+    controller = Controller("cookbooks/database.db")
     controller.shutdown()

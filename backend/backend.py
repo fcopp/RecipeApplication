@@ -1,5 +1,5 @@
 import sqlite3
-import recipe as Recipe
+from recipe import Recipe
 
 class Database:
 
@@ -9,11 +9,11 @@ class Database:
 
         self.c = self.connection.cursor()
 
-        # self.c.execute("""DROP TABLE IF EXISTS ingredients""")
-        # self.c.execute("""DROP TABLE IF EXISTS recipes""")
-        # self.c.execute("""DROP TABLE IF EXISTS instructions""")
-        # self.c.execute("""DROP TABLE IF EXISTS recipeingredients""")
-        # self.c.execute("""DROP TABLE IF EXISTS recipeinstructions""")
+        self.c.execute("""DROP TABLE IF EXISTS ingredients""")
+        self.c.execute("""DROP TABLE IF EXISTS recipes""")
+        self.c.execute("""DROP TABLE IF EXISTS instructions""")
+        self.c.execute("""DROP TABLE IF EXISTS recipeingredients""")
+        self.c.execute("""DROP TABLE IF EXISTS recipeinstructions""")
 
         #Create ingredients
         self.c.execute("""CREATE TABLE IF NOT EXISTS ingredients (
@@ -108,7 +108,7 @@ class Database:
             ingredientsQuantities = self.c.execute("SELECT ingredients.name, recipeingredients.quantity FROM ingredients INNER JOIN recipeingredients ON ingredients.ingredientID = recipeingredients.ingredientID AND recipeingredients.recipeID = ?",(recipeID[0],)).fetchall()
             instructions = self.c.execute("SELECT instructions.instruction, instructions.num FROM instructions INNER JOIN recipeinstructions ON recipeinstructions.instructionID = instructions.instructionID AND recipeinstructions.recipeID = ?",(recipeID[0],)).fetchall()
             ingredients, quantities = zip(*ingredientsQuantities)
-            recipe = Recipe.Recipe(recipe_name, instructions, ingredients, quantities)
+            recipe = Recipe(recipe_name, instructions, ingredients, quantities)
             return [recipe]
         else: # == 0, return None
             return None

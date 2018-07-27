@@ -2,7 +2,7 @@ import tkinter as tk
 import os
 from tkinter import messagebox
 from tkinter import filedialog
-import recipe as Recipe
+from recipe import Recipe
 
 def unitConversion(value, unit_in, unit_out):
     units = {'gal':1, 'qt':4, 'pt':8, 'cups':16, 'oz':128, 'tbsp':256, 'tsp': 768, 'mL':3800, 'L':3.8}
@@ -188,7 +188,7 @@ class updatingListFrame(tk.Frame):
             if value == "":
                 return
             else:
-                entriesList.append(entry.get())
+                entriesList.append(value)
         #self.list_outer.addToText(entriesList)
 
         function(entriesList)
@@ -255,7 +255,7 @@ class recipeFrame(tk.Frame):
         if self.recipe_name_entry.get() == "":
             messagebox.showerror("Error","Recipe name not entered.")
             return
-        recipe = Recipe.Recipe(self.recipe_name_entry.get(),self.instructions,self.ingredients,self.quantities)
+        recipe = Recipe(self.recipe_name_entry.get(),self.instructions,self.ingredients,self.quantities)
         if self.GUI.parent.addRecipe(recipe) != recipe:
             messagebox.showerror("Error","Recipe name already exists.")
             return
@@ -348,14 +348,15 @@ class lookupFrame(tk.Frame):
         if results is None or len(results) == 0:
             messagebox.showerror("Error","No results found.")
         else:
-            if isinstance(results[0],Recipe.Recipe) and len(results) == 1:
+            if isinstance(results[0],Recipe) and len(results) == 1:
                 #print onto text recipe
                 self.scroll_frame.addText("{:<15}".format("Recipe Name:"))
                 self.scroll_frame.addText("{:<50}".format(results[0].name))
                 
                 self.scroll_frame.addText("{:<15}".format("\nRequired Ingredients:"))
                 for index, ingredient in enumerate(results[0].ingredients):
-                    self.scroll_frame.addText("{:<25}{:<10}".format(ingredient,str(results[0].quantities[index])))
+                    value, unit = bestValue(float(results[0].quantities[index]))
+                    self.scroll_frame.addText("{:<25}{:<10.2f}{}".format(ingredient,value,unit))
 
                 self.scroll_frame.addText("{:<15}".format("\nInstructions:"))
                 for index, instruction in enumerate(results[0].instructions):
@@ -620,7 +621,8 @@ class GUI(tk.Tk):
         ftypes = [('Database files','*.db')]
         fileName = filedialog.askopenfilename(filetypes = ftypes)
 
-        if fileName is None:
+
+        if fileName is None or type(fileName) is not str:
             return
         elif os.path.splitext(fileName)[1] == '.db':
             self.parent.switchDatabase(fileName)
@@ -630,8 +632,8 @@ class GUI(tk.Tk):
     def openJSONRecipes(self):
         ftypes = [('JSON files', '*.JSON')]
         fileName = filedialog.askopenfilename(filetypes = ftypes)
-        print(fileName)
-        if fileName is None:
+
+        if fileName is None or fileName == ():
             return
         elif os.path.splitext(fileName)[1] == '.JSON':
             self.parent.readRecipeFile(fileName)
