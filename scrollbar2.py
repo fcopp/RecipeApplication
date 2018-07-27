@@ -1,6 +1,5 @@
 from tkinter import *
 
-
 class scrollingFrame(Frame):
     def __init__(self, parentObject, background):
         Frame.__init__(self, parentObject, background = background,height = 100)
@@ -93,9 +92,9 @@ root = Tk() # Makes the window
 root.grid_rowconfigure(0, weight=1)
 root.grid_columnconfigure(0, weight=1)
 root.wm_title("Title") # Makes the title that will appear in the top left
-root.config(background = deviceBkgColor)
+root.config(background = "red")
 
-myFrame = scrollingFrame(root, background = deviceBkgColor)
+myFrame = scrollingFrame(root, background = "red")
 myFrame.grid(row=0, column=0, sticky=N+S+E+W)
 
 msgList = messageList(myFrame, myFrame.frame)

@@ -9,11 +9,11 @@ class Database:
 
         self.c = self.connection.cursor()
 
-        self.c.execute("""DROP TABLE IF EXISTS ingredients""")
-        self.c.execute("""DROP TABLE IF EXISTS recipes""")
-        self.c.execute("""DROP TABLE IF EXISTS instructions""")
-        self.c.execute("""DROP TABLE IF EXISTS recipeingredients""")
-        self.c.execute("""DROP TABLE IF EXISTS recipeinstructions""")
+        # self.c.execute("""DROP TABLE IF EXISTS ingredients""")
+        # self.c.execute("""DROP TABLE IF EXISTS recipes""")
+        # self.c.execute("""DROP TABLE IF EXISTS instructions""")
+        # self.c.execute("""DROP TABLE IF EXISTS recipeingredients""")
+        # self.c.execute("""DROP TABLE IF EXISTS recipeinstructions""")
 
         #Create ingredients
         self.c.execute("""CREATE TABLE IF NOT EXISTS ingredients (
@@ -53,12 +53,9 @@ class Database:
             FOREIGN KEY (instructionID) REFERENCES instructions(instructionID)
         )
         """)
-        self.test2 = "fuck"
-
 
     def addRecipe(self,recipe):
         #self.c.execute("INSERT OR IGNORE INTO recipes (name) VALUES (?)",(recipe.name,))
-
         hold = self.c.execute("SELECT recipeID FROM recipes WHERE recipes.name = ?",(recipe.name,)).fetchone()
 
         if hold is  not None:
@@ -105,7 +102,6 @@ class Database:
 
     def getRecipe(self,recipe_name): #return either list or single answer, if list then print options 
         recipeID = self.c.execute("SELECT recipes.recipeID FROM recipes WHERE recipes.name = ?",(recipe_name,)).fetchone()
-        print(recipeID)
         if recipeID == None:
             return None
         elif len(recipeID) == 1:
@@ -123,7 +119,6 @@ class Database:
         for name in names:
             if keyword in name:
                 includes_keyword.append(name)
-        print(includes_keyword)
         if len(includes_keyword) == 0:
             return None    
         return includes_keyword
@@ -142,6 +137,9 @@ class Database:
 
     def getRecipeList(self):
         return [name[0] for name in self.c.execute("SELECT recipes.name FROM recipes").fetchall()]
+
+    def getAllRecipes(self):
+        return [self.getRecipe(name[0])[0] for name in self.c.execute("SELECT recipes.name FROM recipes").fetchall()]
 
     def close(self):
         self.connection.commit()
