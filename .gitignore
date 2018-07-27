@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 test/
+backend/__pycache__/
+frontend/__pycache__/
