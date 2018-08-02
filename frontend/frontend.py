@@ -1,9 +1,14 @@
-import tkinter as tk
 import os
+import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
-from recipe import Recipe, unitConversion, bestValue
 
+from recipe_scrapers import WebsiteNotImplementedError
+from recipe import Recipe, Quantity, sumAndBestValue, scrapeRecipe
+from recipe_scrapers import scrape_me
+import inflect
+
+p = inflect.engine()
 
 
 class AutoScrollbar(tk.Scrollbar):
@@ -231,9 +236,8 @@ class recipeFrame(tk.Frame):
 
     def ingredientEvent(self,ingredient_quantity):#, owner):
         self.ingredients.append(ingredient_quantity[0])
-        #store in database in mL
-        self.quantities.append(unitConversion(float(ingredient_quantity[1]),self.ingredients_frame.var.get(),'mL'))
-        self.ingredients_frame.list_outer.addToText([self.ingredients[-1],ingredient_quantity[1]+" "+self.ingredients_frame.var.get()])
+        self.quantities.append(Quantity(float(ingredient_quantity[1]),self.ingredients_frame.var.get()))
+        self.ingredients_frame.list_outer.addToText([self.ingredients[-1],str(self.quantities[-1].value) + " " + self.quantities[-1].unit])
         return
 
     def recipeEvent(self,event):
@@ -311,7 +315,7 @@ class lookupFrame(tk.Frame):
 
     def searchIngredients(self, event):
         self.scroll_frame.deleteAllText()
-        ingredient_keyword = self.ingredient_entry.get()
+        ingredient_keyword = self.ingredient_entry.get().lower()
         self.ingredient_entry.delete("0",tk.END)
         self.recipe_entry.delete("0",tk.END)
         if ingredient_keyword == "":
@@ -321,34 +325,38 @@ class lookupFrame(tk.Frame):
 
     def searchRecipes(self, event):
         self.scroll_frame.deleteAllText()
-        recipe_keyword = self.recipe_entry.get()
+        recipe_keyword = self.recipe_entry.get().lower()
         self.recipe_entry.delete("0",tk.END)
         self.ingredient_entry.delete("0",tk.END)
         if recipe_keyword == "":
+            self.printResults(self.GUI.parent.getAllRecipeNames())
             return
         self.printResults(self.GUI.parent.recipeKeywordSearch(recipe_keyword))
         return
 
     def printResults(self, results):
         #either list or single recipe or none
-        print(results)
         if results is None or len(results) == 0:
             messagebox.showerror("Error","No results found.")
         else:
             if isinstance(results[0],Recipe) and len(results) == 1:
+
+                recipe = results[0]
+
                 #print onto text recipe
                 self.scroll_frame.addText("{:<15}".format("Recipe Name:"))
-                self.scroll_frame.addText("{:<50}".format(results[0].name))
+                self.scroll_frame.addText("{:<50}".format(recipe.name))
                 
                 self.scroll_frame.addText("{:<15}".format("\nRequired Ingredients:"))
-                for index, ingredient in enumerate(results[0].ingredients):
-                    value, unit = bestValue(float(results[0].quantities[index]))
-                    self.scroll_frame.addText("{:<25}{:<10.2f}{}".format(ingredient,value,unit))
+                for index, ingredient in enumerate(recipe.ingredients):
+                    self.scroll_frame.addText("{:<30} {:.2f} {}".format(ingredient,recipe.quantities[index].value,p.plural(recipe.quantities[index].unit ,recipe.quantities[index].value) if recipe.quantities[index].unit != "x" else "x"))
 
                 self.scroll_frame.addText("{:<15}".format("\nInstructions:"))
-                for index, instruction in enumerate(results[0].instructions):
+                for index, instruction in enumerate(recipe.instructions):
                     self.scroll_frame.addText("{}. {}".format(index+1,instruction[0]))
-
+            
+            elif len(results) == 1:
+                self.printResults(self.GUI.parent.recipeKeywordSearch(results[0]))
             else:
                 #print only names of recipes
                 self.scroll_frame.addText("{:<15}".format("Names of possible recipes:"))
@@ -393,7 +401,7 @@ class deleteFrame(tk.Frame):
 
 
     def deleteRecipe(self, event):
-        recipe_keyword = self.recipe_name_entry.get()
+        recipe_keyword = self.recipe_name_entry.get().lower()
         self.recipe_name_entry.delete("0",tk.END)
         result = self.GUI.parent.deleteRecipe(recipe_keyword)
 
@@ -475,10 +483,18 @@ class groceriesFrame(tk.Frame):
         self.recipes = {}
 
     def addRecipes(self, event):
-        result = self.GUI.parent.getRecipe(self.recipe_name_entry.get())
+        if self.recipe_name_entry.get() == "":
+            return
+
+        result = self.GUI.parent.recipeKeywordSearch(self.recipe_name_entry.get().lower())
+
         if result is None:
             messagebox.showerror("Error", "Recipe not found.")
             return
+        print(type(result[0]))
+        if type(result[0]) is str:
+            print("fuck")
+            result = self.GUI.parent.recipeKeywordSearch(result[0].lower())
         recipe = result[0]
 
         if recipe.name not in self.recipes:
@@ -520,14 +536,20 @@ class groceriesFrame(tk.Frame):
             recipe = self.recipes[recipe_name]
 
             for index, ingredient in enumerate(recipe.ingredients):
+                quantity = recipe.quantities[index]
+                quantity.value *= recipe.occurrences
                 if ingredient in g_list:
-                    g_list[ingredient] += (float(recipe.quantities[index]) * recipe.occurrences)
+                    g_list[ingredient].append(quantity)
                 else:
-                    g_list[ingredient] = (float(recipe.quantities[index]) * recipe.occurrences)
+                    g_list[ingredient] = [quantity] # = (float(recipe.quantities[index][0]) * recipe.occurrences)
 
-        for pair in g_list.items():
-            value = bestValue(pair[1])
-            grocery_list += (str(pair[0]) + ", " + '{:.2f}'.format(value[0]) + " " + str(value[1]) + "\n")
+        for ingredient_listquantities in g_list.items():
+
+            ingredient = ingredient_listquantities[0]
+            quantities = sumAndBestValue(ingredient_listquantities[1])
+            print(quantities)
+            for quantity in quantities:
+                grocery_list += (ingredient + ", " + '{:.2f}'.format(quantity.value) + quantity.unit + "\n")
 
 
         file.write(grocery_list)
@@ -542,8 +564,11 @@ class groceriesFrame(tk.Frame):
 
 class GUI(tk.Tk):
     def __init__(self,parent):
-        tk.Tk.__init__(self)
+        
         self.parent = parent
+
+
+        tk.Tk.__init__(self)        
         self.title('Cookbook')
         self.geometry('{}x{}'.format(700,520))
         self.grid()
@@ -561,11 +586,19 @@ class GUI(tk.Tk):
         self.cookbook_menu.add_command(label = "Export JSON recipes", command = lambda: self.saveRecipes())
         self.cookbook_menu.add_command(label = "Import JSON recipes", command = lambda: self.openJSONRecipes())
         
+        self.recipe_menu = tk.Menu(self.menu, tearoff = 0)
+
+        self.add_menu = tk.Menu(self.recipe_menu, tearoff = 0)
+        self.add_menu.add_command(label = "Add Recipe", command = lambda: self.show_frame("recipeFrame"))
+        self.add_menu.add_command(label = "Add Recipe from URL", command = lambda: self.urlRecipeImport())
+
+        self.recipe_menu.add_cascade(label = "Add Recipe...", menu = self.add_menu)
+        self.recipe_menu.add_command(label = "Search Recipes",command = lambda: self.show_frame("lookupFrame"))
+        self.recipe_menu.add_command(label = "Delete Recipe",command = lambda: self.show_frame("deleteFrame"))
+        self.recipe_menu.add_command(label = "Create Grocery List",command = lambda: self.show_frame("groceriesFrame"))
+
         self.menu.add_cascade(label = "File", menu = self.cookbook_menu)
-        self.menu.add_command(label = "Add Recipe", command = lambda: self.show_frame("recipeFrame"))
-        self.menu.add_command(label = "Search Recipes",command = lambda: self.show_frame("lookupFrame"))
-        self.menu.add_command(label = "Delete Recipe",command = lambda: self.show_frame("deleteFrame"))
-        self.menu.add_command(label = "Create Grocery List",command = lambda: self.show_frame("groceriesFrame"))
+        self.menu.add_cascade(label = "Recipe Options", menu = self.recipe_menu)
 
         self.frames = {}
 
@@ -578,7 +611,63 @@ class GUI(tk.Tk):
         self.show_frame("recipeFrame")
 
         # self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+
+        ftypes = [('Database files','*.db')]
+        
+        check = False
+
+        while(check == False):
+
+            fileName = filedialog.askopenfilename(filetypes = ftypes)
+
+            if fileName is None or type(fileName) is not str:
+                exit()
+            elif os.path.splitext(fileName)[1] == '.db':
+                self.parent.switchDatabase(fileName)
+                check = True
+            else:
+                messagebox.showerror("Error", "Sorry, the file you selected is not supported.")
+
         self.mainloop()
+
+    def urlRecipeImport(self):
+        self.window = tk.Toplevel()
+        self.window.title("Enter URL")
+
+        frame = tk.Frame(self.window)
+        label = tk.Label(frame, text = "Enter URL:")
+        entry = tk.Entry(frame)
+        entry.bind('<Return>',lambda event: self.useURL(entry.get()))
+        button = tk.Button(frame, text = "Add", command = lambda: self.useURL(entry.get()))
+
+        label.pack(side = "left")
+        entry.pack(side = "left")
+        button.pack(side = "left")
+        frame.pack(side = "top")
+
+        self.window.grab_set()
+
+        return
+
+    def useURL(self, url):
+        if url is not "":
+            try:
+                scrape = scrape_me(url)
+                recipe = scrapeRecipe(scrape)
+                if recipe is not None:
+                    self.parent.addRecipe(recipe)
+
+                self.window.destroy()
+            except WebsiteNotImplementedError:
+                self.window.grab_release()
+                messagebox.showerror("Error", "Sorry, the website you entered is not supported.")
+                self.window.grab_set()
+        else:
+            self.window.grab_release()
+            messagebox.showerror("Error", "URL not entered")
+            self.window.grab_set()
+        return
 
     def clear_frames(self):
         for key in self.frames:
@@ -626,6 +715,7 @@ class GUI(tk.Tk):
             self.parent.readRecipeFile(fileName)
 
         return
+
 
     # def on_closing(self):
     #     if messagebox.askokcancel("Quit", "Do you want to quit?"):

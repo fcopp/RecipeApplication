@@ -3,22 +3,18 @@ import json
 from recipe_scrapers import scrape_me
 from frontend import GUI
 from backend import Database
-from recipe import Recipe
+from recipe import Recipe,  Quantity, stringsToQuantities
 
 class Controller():
     def __init__(self,database):
         self.database = Database(database)
-        # recipe = Recipe.Recipe("fuck", ["suck me"], ["dicks", "cocks", "cocknug"], [1,2,3])
-        # self.database.addRecipe(recipe)
         self.GUI = GUI(self)
         
     def writeRecipeFile(self, file):
-
         recipes = self.database.getAllRecipes()
         print(recipes)
         
         text = "["
-
         for recipe in recipes:
             text += (json.dumps(recipe.getJSON(),indent=4, sort_keys=True) + ",")
 
@@ -26,25 +22,23 @@ class Controller():
         text += "]"
         file.write(text)
         file.close()
-
         return
 
     def readRecipeFile(self, fileName):
         file = open(fileName, mode = "r")
         if file is None:
             return
-
         try:
             text = json.load(file)
             for recipe in text:
-                recipe = Recipe(recipe["name"],recipe["instructions"], recipe["ingredients"], recipe["quantities"])
+                recipe = Recipe(recipe["name"],recipe["instructions"], recipe["ingredients"], stringsToQuantities(recipe["quantities"]))
                 recipe.print()
                 self.database.addRecipe(recipe)
         except (ValueError) as e:
+            file.close()
             return
-        return
-
         file.close()
+        return
 
     def shutdown(self):
         self.database.close()
@@ -68,6 +62,9 @@ class Controller():
             return self.database.keyWordSearchRecipes(keyword)
         else:
             return hold
+
+    def getAllRecipeNames(self):
+        return self.database.getRecipeList()
 
     def getRecipe(self, keyword):
         return self.database.getRecipe(keyword)
