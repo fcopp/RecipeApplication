@@ -611,25 +611,43 @@ class GUI(tk.Tk):
         self.show_frame("recipeFrame")
 
         # self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+        self.parent.setUpDatabase(self.getFileName())
 
-        ftypes = [('Database files','*.db')]
-        
-        check = False
-
-        while(check == False):
-
-            fileName = filedialog.askopenfilename(filetypes = ftypes)
-
-            if fileName is None or type(fileName) is not str:
-                exit()
-            elif os.path.splitext(fileName)[1] == '.db':
-                self.parent.switchDatabase(fileName)
-                check = True
-            else:
-                messagebox.showerror("Error", "Sorry, the file you selected is not supported.")
 
         self.mainloop()
+
+    def getFileName(self):
+        ftypes = [('Database files','*.db')]
+
+        answer = messagebox.askyesno("Database","Open existing database?")
+        print(answer)
+        if answer is True:
+            while(1):
+
+                fileName = filedialog.askopenfilename(filetypes = ftypes)
+                if fileName is None or type(fileName) is not str:
+                    exit()
+                elif os.path.splitext(fileName)[1] == '.db':
+                    return fileName
+                else:
+                    messagebox.showerror("Error", "Sorry, the file you selected is not supported.")
+
+            else:
+                exit()
+
+        elif answer is False:
+            while(1):
+
+                fileName = filedialog.asksaveasfilename(filetypes = ftypes)
+                if fileName is None or type(fileName) is not str:
+                    exit()
+                elif os.path.splitext(fileName)[1] == '.db':
+                    return fileName
+                else:
+                    messagebox.showerror("Error", "Sorry, the file you selected is not supported.")
+
+            else:
+                exit()
 
     def urlRecipeImport(self):
         self.window = tk.Toplevel()

@@ -6,10 +6,14 @@ from backend import Database
 from recipe import Recipe,  Quantity, stringsToQuantities
 
 class Controller():
-    def __init__(self,database):
-        self.database = Database(database)
+    def __init__(self):
+        
         self.GUI = GUI(self)
         
+    def setUpDatabase(self,database):
+        self.database = Database(database)
+
+
     def writeRecipeFile(self, file):
         recipes = self.database.getAllRecipes()
         print(recipes)
@@ -44,6 +48,7 @@ class Controller():
         self.database.close()
 
     def switchDatabase(self, fileName):
+        self.database.close()
         self.database = Database(fileName)
         return
 
@@ -71,5 +76,5 @@ class Controller():
 
 
 if __name__ == '__main__':
-    controller = Controller("cookbooks/database.db")
+    controller = Controller()
     controller.shutdown()
